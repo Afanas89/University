@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net5.0-windows</TargetFramework>
+        <RootNamespace>University.ARTQ</RootNamespace>
+        <UseWPF>true</UseWPF>
+        <IsPackable>false</IsPackable>
+        <Authors>Vdovin Alexander</Authors>
+        <Company>Vdovin Alexander</Company>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Translator\Translator.csproj" />
+    </ItemGroup>
+
+</Project>

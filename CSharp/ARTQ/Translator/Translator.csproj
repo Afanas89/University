@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net5.0</TargetFramework>
+        <RootNamespace>University.ARTQ</RootNamespace>
+        <IsPackable>false</IsPackable>
+        <Company>Vdovin Alexander</Company>
+        <Authors>Vdovin Alexander</Authors>
+    </PropertyGroup>
+
+</Project>
