@@ -8,177 +8,123 @@ namespace University.ARTQ
     public sealed class Lexer 
     {
         #region Fields and Properties
-        // пересечение
-        private const string OperatorIntersect = "\u2229";
 
-        // объединение
-        private const string OperatorUnion = "\u222A";
-
-        // минус
-        private const string OperatorMinus = "\u2212";
-
-        // PI
-        private const string OperatorPI = "\u220F";
-        private const string gm_MR = "\u2264";
-
-        // sigma
-        private const string OperatorSigma = "\u03c3";
-        private const string gm_BR = "\u2265";
-
-        // join
-        private const string OperatorJoin = "\u22c8";
-        private const string gm_NR = "\u2260";
-        
-        // Query Tree
-        private Query MainTreeNode;
-        private List<Query> OtherTreeNode;
-        
-        public List<string> ReservedOperators { get; set; }
-        
+        /// <summary>
+        /// Текст содержащий булеву алгебру.
+        /// </summary>
         public string AlgebraText { get; set; }
         
-        public List<string> m_SQL_Text;
-        public int m_PrevToken, m_Offset;
-        public List<RelationalAlgebraToken> m_TokenList;
-        public List<SqlToken> m_BlockTokenList;
-        
-        
-        
+        /// <summary>
+        /// Конечный запрос разбитый на строки.
+        /// </summary>
+        public List<string> SqlText { get; }
+
+        public List<RelationalAlgebraToken> AlgebraTokens { get; }
+        public List<SqlToken> SqlTokens { get; }
 
         #endregion
 
         #region Constructors
+
         public Lexer()
         {
-            ReservedOperators = new List<string>()
-            {
-                OperatorIntersect,
-                OperatorUnion,
-                OperatorMinus,
-                OperatorPI,
-                OperatorSigma,
-                OperatorJoin,
-                gm_MR,
-                gm_BR,
-                gm_NR,
-                ">",
-                "<",
-                "=",
-                " OR ",
-                " AND "
-            };
-            
-            m_SQL_Text = new List<string>();
-            m_TokenList = new List<RelationalAlgebraToken>();
-            m_BlockTokenList = new List<SqlToken>();
+            SqlText = new List<string>();
+            AlgebraTokens = new List<RelationalAlgebraToken>();
+            SqlTokens = new List<SqlToken>();
         }
+
         #endregion
 
         #region Methods
-        public bool WorkAll(string text_algebra)
+
+        public bool WorkAll(string textAlgebra)
         {
-            Start(text_algebra);
+            Start(textAlgebra);
             if (SimpleAn() != "ok") return false;
             if (BlockedText() != "ok") return false;
             PostfixFormat();
             if (Parser() != "ok") return false;
             return true;
         }
-
-        public static int CountWords(string s, string s0)
-        {
-            int count = (s.Length - s.Replace(s0, "").Length) / s0.Length;
-            return count;
-        }
-        public static string ParseLine(string str)
-        {
-            string ttt = System.Text.RegularExpressions.Regex.Replace(str, " +", " ");
-            ttt = System.Text.RegularExpressions.Regex.Replace(ttt, @"\s+", " ");
-            ttt = System.Text.RegularExpressions.Regex.Replace(ttt, @"[;:.&^%$#@!?№~|\/]", "");
-            return ttt.Trim();
-        }
-
+        
         // получаем строку и разбиваем ее на токены
         public bool Start(string originalText)
         {
             AlgebraText = originalText;
-
-            m_PrevToken = 0;
-            RelationalAlgebraToken ErrorToken = new ();
-
-            m_Offset = 0;
-            m_TokenList.Clear();
+            SqlText.Clear();
+            AlgebraTokens.Clear();
+            SqlTokens.Clear();
 
             for (int i = 0; i < originalText.Length; i++)
             {
                 if (originalText[i] == ' ')
                     continue;
 
-                char symbol = originalText[i];
-
-
-                if (symbol == '(') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.SeparatorOpen, "("));
-                else if (symbol == '[') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.SeparatorOpen, "["));
-                else if (symbol == '{') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.SeparatorOpen, "{"));
-                else if (symbol == ')') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.SeparatorClose, ")"));
-                else if (symbol == ']') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.SeparatorClose, "]"));
-                else if (symbol == '}') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.SeparatorClose, "}"));
-                else if (symbol == '\u2229') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Operator, "INTERSECT"));
-                else if (symbol == '\u222A') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Operator, "UNION"));
-                else if (symbol == '\u2212') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Operator, "MINUS"));
-                else if (symbol == '\u220F') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Operator, "PI"));
-                else if (symbol == '\u03c3') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Operator, "SIGMA"));
-                else if (symbol == '\u22c8') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Operator, "JOIN"));
-                else if (symbol == '\u2264') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Logic, "\u2264")); // <=
-                else if (symbol == '\u2265') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Logic, "\u2265")); // >=
-                else if (symbol == '\u2260') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Logic, "\u2260")); // !=
-                else if (symbol == '>') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Logic, ">"));
-                else if (symbol == '<') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Logic, "<"));
-                else if (symbol == '=') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Logic, "="));
-                else if (symbol == ',') m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Separator, ","));
+                var symbol = originalText[i];
+                
+                if (symbol == '(') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.SeparatorOpen, "("));
+                else if (symbol == '[') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.SeparatorOpen, "["));
+                else if (symbol == '{') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.SeparatorOpen, "{"));
+                else if (symbol == ')') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.SeparatorClose, ")"));
+                else if (symbol == ']') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.SeparatorClose, "]"));
+                else if (symbol == '}') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.SeparatorClose, "}"));
+                else if (symbol == '\u2229') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Operator, "INTERSECT"));
+                else if (symbol == '\u222A') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Operator, "UNION"));
+                else if (symbol == '\u2212') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Operator, "MINUS"));
+                else if (symbol == '\u220F') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Operator, "PI"));
+                else if (symbol == '\u03c3') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Operator, "SIGMA"));
+                else if (symbol == '\u22c8') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Operator, "JOIN"));
+                else if (symbol == '\u2264') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Logic, "\u2264")); // <=
+                else if (symbol == '\u2265') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Logic, "\u2265")); // >=
+                else if (symbol == '\u2260') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Logic, "\u2260")); // !=
+                else if (symbol == '>') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Logic, ">"));
+                else if (symbol == '<') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Logic, "<"));
+                else if (symbol == '=') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Logic, "="));
+                else if (symbol == ',') AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Separator, ","));
                 else
                 {
                     int h = originalText.IndexOfAny((" <,>=(){}[]\u2229\u222A\u220F\u03c3\u22c8\u2264\u2265\u2260\u2212").ToCharArray(), i);
                     if (h == -1)
                     {
-                        m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Table, originalText.Substring(i, originalText.Length - i)));
+                        AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Table, originalText.Substring(i, originalText.Length - i)));
                         break;
                     }
-                    else
-                    {
-                        m_TokenList.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Table, originalText.Substring(i, h - i)));
-                        i = h - 1;
-                    }
+                    
+                    AlgebraTokens.Add(new RelationalAlgebraToken(RelationalAlgebraTokenType.Table, originalText.Substring(i, h - i)));
+                    i = h - 1;
                 }
-                
             }
 
-            for (int i = 0; i < m_TokenList.Count; i++)
+            foreach (var t in AlgebraTokens)
             {
-                if (m_TokenList[i].Type == RelationalAlgebraTokenType.Table || m_TokenList[i].Type == RelationalAlgebraTokenType.Unknown)
+                if (t.Type is RelationalAlgebraTokenType.Table or RelationalAlgebraTokenType.Unknown)
                 {
-                    string z_ts = m_TokenList[i].Text.ToUpper();
-                    if (z_ts == "INTERSECT" || z_ts == "UNION" || z_ts == "PI" || z_ts == "SIGMA" || z_ts == "MINUS" || z_ts == "JOIN")
+                    string tokenText = t.Text.ToUpper();
+                    if (tokenText is "INTERSECT" or "UNION" or "PI" or "SIGMA" or "MINUS" or "JOIN")
                     {
-                        m_TokenList[i].Text = z_ts;
-                        m_TokenList[i].Type = RelationalAlgebraTokenType.Operator;
+                        t.Text = tokenText;
+                        t.Type = RelationalAlgebraTokenType.Operator;
                     }
-                    else if (z_ts == "OR" || z_ts == "AND")
+                    else if (tokenText is "OR" or "AND")
                     {
-                        m_TokenList[i].Text = z_ts;
-                        m_TokenList[i].Type = RelationalAlgebraTokenType.Logic;
+                        t.Text = tokenText;
+                        t.Type = RelationalAlgebraTokenType.Logic;
                     }
                 }
             }
+
             return true;
         }
 
         // Простые проверки на корректность выражения
         public string SimpleAn()
         {
-            if (m_TokenList.Count < 1) return "Нет токенов";
-            if (m_TokenList[0].Type != RelationalAlgebraTokenType.Table && m_TokenList[0].Type != RelationalAlgebraTokenType.Operator && m_TokenList[0].Type != RelationalAlgebraTokenType.SeparatorOpen)
+            if (AlgebraTokens.Count < 1) 
+                return "Нет токенов";
+            
+            if (AlgebraTokens[0].Type != RelationalAlgebraTokenType.Table && AlgebraTokens[0].Type != RelationalAlgebraTokenType.Operator && AlgebraTokens[0].Type != RelationalAlgebraTokenType.SeparatorOpen)
                 return "Запись должна начинаться с оператора, отношения или открывающей скобки";
+
             return "ok";
         }
 
@@ -186,20 +132,18 @@ namespace University.ARTQ
         // например, объединяем все токены, принадлежащие к одному оператору Proj, в один блок - SELECT
         public string BlockedText()
         {
-            MainTreeNode = new Query();
-            OtherTreeNode = new List<Query>();
-            m_BlockTokenList.Clear();
+            SqlTokens.Clear();
 
-            for (int i = 0; i < m_TokenList.Count; i++)
+            for (int i = 0; i < AlgebraTokens.Count; i++)
             {
-                if (m_TokenList[i].Type == RelationalAlgebraTokenType.Operator)
+                if (AlgebraTokens[i].Type == RelationalAlgebraTokenType.Operator)
                 {
-                    if (m_TokenList[i].Text == "PI")
+                    if (AlgebraTokens[i].Text == "PI")
                     {
-                        string z_str = "";
-                        if (i + 1 < m_TokenList.Count)
+                        string zStr = "";
+                        if (i + 1 < AlgebraTokens.Count)
                         {
-                            if (m_TokenList[i + 1].Type != RelationalAlgebraTokenType.SeparatorOpen)
+                            if (AlgebraTokens[i + 1].Type != RelationalAlgebraTokenType.SeparatorOpen)
                             {
                                 return "Ошибка в синтаксисе оператора проекции.\n === === ===\nPI ([аргументы])(отношение)\n === === ===\nСкобки для аргументов не опознаны";
                             }
@@ -209,44 +153,45 @@ namespace University.ARTQ
                             return "Ошибка в синтаксисе оператора проекции.\n === === ===\nPI ([аргументы])(отношение)\n === === ===\nСкобки для аргументов не опознаны";
                         }
 
-                        bool z_FindResult = false;
-                        int z_CountOpens = 0;
+                        bool zFindResult = false;
+                        int zCountOpens = 0;
                         int j;
-                        for (j = i + 2; j < m_TokenList.Count; j++)
+                        for (j = i + 2; j < AlgebraTokens.Count; j++)
                         {
-                            if (m_TokenList[j].Type == RelationalAlgebraTokenType.SeparatorClose)
+                            if (AlgebraTokens[j].Type == RelationalAlgebraTokenType.SeparatorClose)
                             {
-                                if (z_CountOpens > 0)
+                                if (zCountOpens > 0)
                                 {
-                                    z_CountOpens--;
-                                    z_str += ")";
+                                    zCountOpens--;
+                                    zStr += ")";
                                 }
                                 else
                                 {
-                                    if (!z_FindResult) z_str += " * ";
+                                    if (!zFindResult) zStr += " * ";
                                     break;
                                 }
                             }
-                            else if (m_TokenList[j].Type == RelationalAlgebraTokenType.SeparatorOpen)
+                            else if (AlgebraTokens[j].Type == RelationalAlgebraTokenType.SeparatorOpen)
                             {
-                                z_CountOpens++;
-                                z_str += " (";
+                                zCountOpens++;
+                                zStr += " (";
                             }
                             else
                             {
-                                z_FindResult = true;
-                                z_str += " " + m_TokenList[j].Text;
+                                zFindResult = true;
+                                zStr += " " + AlgebraTokens[j].Text;
                             }
                         }
+
                         i = j;
-                        m_BlockTokenList.Add(new SqlToken(SqlTokenType.Select, z_str));
+                        SqlTokens.Add(new SqlToken(SqlTokenType.Select, zStr));
                     }
-                    else if (m_TokenList[i].Text == "SIGMA")
+                    else if (AlgebraTokens[i].Text == "SIGMA")
                     {
-                        string z_str = "";
-                        if (i + 1 < m_TokenList.Count)
+                        string zStr = "";
+                        if (i + 1 < AlgebraTokens.Count)
                         {
-                            if (m_TokenList[i + 1].Type != RelationalAlgebraTokenType.SeparatorOpen)
+                            if (AlgebraTokens[i + 1].Type != RelationalAlgebraTokenType.SeparatorOpen)
                             {
                                 return "Ошибка в синтаксисе оператора выборки.\n === === ===\nSIGMA ([аргументы])(отношение)\n === === ===\nСкобки для аргументов не опознаны";
                             }
@@ -256,63 +201,64 @@ namespace University.ARTQ
                             return "Ошибка в синтаксисе оператора выборки.\n === === ===\nSIGMA ([аргументы])(отношение)\n === === ===\nСкобки для аргументов не опознаны";
                         }
 
-                        bool z_FindResult = false;
-                        int z_CountOpens = 0;
+                        bool zFindResult = false;
+                        int zCountOpens = 0;
                         int j;
-                        for (j = i + 2; j < m_TokenList.Count; j++)
+                        for (j = i + 2; j < AlgebraTokens.Count; j++)
                         {
-                            if (m_TokenList[j].Type == RelationalAlgebraTokenType.SeparatorClose)
+                            if (AlgebraTokens[j].Type == RelationalAlgebraTokenType.SeparatorClose)
                             {
-                                if (z_CountOpens > 0)
+                                if (zCountOpens > 0)
                                 {
-                                    z_CountOpens--;
-                                    z_str += ")";
+                                    zCountOpens--;
+                                    zStr += ")";
                                 }
                                 else
                                 {
-                                    if (!z_FindResult) z_str += " * ";
+                                    if (!zFindResult) zStr += " * ";
                                     break;
-
                                 }
                             }
-                            else if (m_TokenList[j].Type == RelationalAlgebraTokenType.SeparatorOpen)
+                            else if (AlgebraTokens[j].Type == RelationalAlgebraTokenType.SeparatorOpen)
                             {
-                                z_CountOpens++;
-                                z_str += " (";
+                                zCountOpens++;
+                                zStr += " (";
                             }
                             else
                             {
-                                z_FindResult = true;
-                                z_str += " " + m_TokenList[j].Text;
+                                zFindResult = true;
+                                zStr += " " + AlgebraTokens[j].Text;
                             }
                         }
+
                         i = j;
-                        m_BlockTokenList.Add(new SqlToken(SqlTokenType.Where, z_str));
+                        SqlTokens.Add(new SqlToken(SqlTokenType.Where, zStr));
                     }
                     else
                     {
-                        m_BlockTokenList.Add(new SqlToken(SqlTokenType.Operator, m_TokenList[i].Text));
+                        SqlTokens.Add(new SqlToken(SqlTokenType.Operator, AlgebraTokens[i].Text));
                     }
                 }
-                else if (m_TokenList[i].Type == RelationalAlgebraTokenType.SeparatorOpen)
+                else if (AlgebraTokens[i].Type == RelationalAlgebraTokenType.SeparatorOpen)
                 {
-                    m_BlockTokenList.Add(new SqlToken(SqlTokenType.SeparatorOpen, "("));
+                    SqlTokens.Add(new SqlToken(SqlTokenType.SeparatorOpen, "("));
                 }
-                else if (m_TokenList[i].Type == RelationalAlgebraTokenType.SeparatorClose)
+                else if (AlgebraTokens[i].Type == RelationalAlgebraTokenType.SeparatorClose)
                 {
-                    m_BlockTokenList.Add(new SqlToken(SqlTokenType.SeparatorClose, ")"));
+                    SqlTokens.Add(new SqlToken(SqlTokenType.SeparatorClose, ")"));
                 }
                 else
                 {
-                    if (m_BlockTokenList.Count != 0)
+                    if (SqlTokens.Count != 0)
                     {
-                        if (m_BlockTokenList[m_BlockTokenList.Count - 1].Type == SqlTokenType.From)
-                            m_BlockTokenList[m_BlockTokenList.Count - 1].Text += " " + m_TokenList[i].Text;
-                        else m_BlockTokenList.Add(new SqlToken(SqlTokenType.From, m_TokenList[i].Text));
+                        if (SqlTokens[SqlTokens.Count - 1].Type == SqlTokenType.From)
+                            SqlTokens[SqlTokens.Count - 1].Text += " " + AlgebraTokens[i].Text;
+                        else SqlTokens.Add(new SqlToken(SqlTokenType.From, AlgebraTokens[i].Text));
                     }
-                    else m_BlockTokenList.Add(new SqlToken(SqlTokenType.From, m_TokenList[i].Text));
+                    else SqlTokens.Add(new SqlToken(SqlTokenType.From, AlgebraTokens[i].Text));
                 }
             }
+
             return "ok";
         }
 
@@ -334,117 +280,118 @@ namespace University.ARTQ
                 case SqlTokenType.SeparatorClose: return 1;
                 case SqlTokenType.Unknown: return 7;
             }
+
             return 8;
         }
 
         // преобразуем последовательность блоков согласно польской записи, для дальнейших вычислений-преобразований
         public void PostfixFormat()
         {
-            List<SqlToken> z_Block = new List<SqlToken>();
-            Stack<SqlToken> z_Stack = new Stack<SqlToken>();
+            List<SqlToken> zBlock = new List<SqlToken>();
+            Stack<SqlToken> zStack = new Stack<SqlToken>();
 
-            for (int i = 0; i < m_BlockTokenList.Count; i++)
+            for (int i = 0; i < SqlTokens.Count; i++)
             {
-                if (z_Stack.Count > 0 && m_BlockTokenList[i].Type != SqlTokenType.SeparatorOpen)
+                if (zStack.Count > 0 && SqlTokens[i].Type != SqlTokenType.SeparatorOpen)
                 {
-                    if (m_BlockTokenList[i].Type == SqlTokenType.SeparatorClose)
+                    if (SqlTokens[i].Type == SqlTokenType.SeparatorClose)
                     {
-                        SqlToken s = z_Stack.Pop();
+                        SqlToken s = zStack.Pop();
                         while (s.Type != SqlTokenType.SeparatorOpen)
                         {
-                            z_Block.Add(s);
-                            //if (z_Stack.Count == 0) { return; }
-                            s = z_Stack.Pop();
+                            zBlock.Add(s);
+                            s = zStack.Pop();
                         }
                     }
                     else
                     {
-                        if (GetPr(m_BlockTokenList[i]) >= GetPr(z_Stack.Peek()))
-                            z_Stack.Push(m_BlockTokenList[i]);
+                        if (GetPr(SqlTokens[i]) >= GetPr(zStack.Peek()))
+                            zStack.Push(SqlTokens[i]);
                         else
                         {
-                            while (z_Stack.Count > 0 && GetPr(m_BlockTokenList[i]) < GetPr(z_Stack.Peek()))
-                                z_Block.Add(z_Stack.Pop());
-                            z_Stack.Push(m_BlockTokenList[i]);
+                            while (zStack.Count > 0 && GetPr(SqlTokens[i]) < GetPr(zStack.Peek()))
+                                zBlock.Add(zStack.Pop());
+
+                            zStack.Push(SqlTokens[i]);
                         }
                     }
                 }
-                else z_Stack.Push(m_BlockTokenList[i]);
+                else zStack.Push(SqlTokens[i]);
             }
-            if (z_Stack.Count > 0)
+
+            if (zStack.Count > 0)
             {
-                foreach (SqlToken c in z_Stack)
-                    z_Block.Add(c);
+                foreach (SqlToken c in zStack)
+                    zBlock.Add(c);
             }
 
-            m_BlockTokenList.Clear();
+            SqlTokens.Clear();
 
-            foreach (SqlToken c in z_Block)
-                m_BlockTokenList.Add(c);
+            foreach (SqlToken c in zBlock)
+                SqlTokens.Add(c);
         }
 
         // по последовательности блоков (в польской записи) создаем SQL запрос
         public string Parser()
         {
-            m_SQL_Text.Clear();
+            SqlText.Clear();
 
-            string zSTRWhere, zSTRSelect, zSTRFrom;
-
-            zSTRWhere = "";
-            zSTRSelect = " * ";
-            zSTRFrom = "";
+            var zStrWhere = "";
+            var zStrSelect = " * ";
+            var zStrFrom = "";
 
             List<int> todeletelist = new List<int>();
-            for (int i = 0; i < m_BlockTokenList.Count; i++)
+            for (int i = 0; i < SqlTokens.Count; i++)
             {
-
-                if (m_BlockTokenList[i].Type == SqlTokenType.From)
+                if (SqlTokens[i].Type == SqlTokenType.From)
                 {
                     int kk = i;
-                    zSTRFrom = m_BlockTokenList[i].Text;
+                    zStrFrom = SqlTokens[i].Text;
                     i++;
-                    while (i < m_BlockTokenList.Count &&
-                           m_BlockTokenList[i].Type != SqlTokenType.Operator &&
-                           m_BlockTokenList[i].Type != SqlTokenType.From)
+                    while (i < SqlTokens.Count &&
+                           SqlTokens[i].Type != SqlTokenType.Operator &&
+                           SqlTokens[i].Type != SqlTokenType.From)
                     {
-                        if (m_BlockTokenList[i].Type == SqlTokenType.Select)
+                        if (SqlTokens[i].Type == SqlTokenType.Select)
                         {
-                            zSTRSelect = m_BlockTokenList[i].Text;
+                            zStrSelect = SqlTokens[i].Text;
                             todeletelist.Add(i);
                         }
-                        else if (m_BlockTokenList[i].Type == SqlTokenType.Where)
+                        else if (SqlTokens[i].Type == SqlTokenType.Where)
                         {
-                            zSTRWhere = m_BlockTokenList[i].Text;
+                            zStrWhere = SqlTokens[i].Text;
                             todeletelist.Add(i);
                         }
 
                         i++;
                     }
 
-                    m_BlockTokenList[kk].Text = (" SELECT " + zSTRSelect + " FROM " + zSTRFrom +
-                                                   ((zSTRWhere.Length > 0) ? (" WHERE " + zSTRWhere) : (""))
+                    SqlTokens[kk].Text = (" SELECT " + zStrSelect + " FROM " + zStrFrom +
+                                                   ((zStrWhere.Length > 0) ? (" WHERE " + zStrWhere) : (""))
                         );
-                    zSTRWhere = "";
-                    zSTRSelect = " * ";
-                    zSTRFrom = "";
+
+                    zStrWhere = "";
+                    zStrSelect = " * ";
+                    zStrFrom = "";
                     i = kk;
                 }
             }
 
             for (int i = todeletelist.Count - 1; i >= 0; i--)
             {
-                m_BlockTokenList.RemoveAt(todeletelist[i]);
+                SqlTokens.RemoveAt(todeletelist[i]);
             }
 
             bool findwhere = false, findselect = false;
             Stack<SqlToken> simstack23 = new Stack<SqlToken>();
-            List<string> outst23 = new List<string>();
-            foreach (SqlToken sss in m_BlockTokenList)
+            
+            foreach (SqlToken sss in SqlTokens)
             {
                 if (sss.Type == SqlTokenType.Operator)
                 {
                     if (simstack23.Count < 2)
                         return "неверен синтаксис оператора " + sss.Text + " (не хватает аргументов)";
+
                     SqlToken sr = simstack23.Pop();
                     SqlToken sl = simstack23.Pop();
 
@@ -460,6 +407,7 @@ namespace University.ARTQ
                 {
                     if (simstack23.Count == 0)
                         return "неверен синтаксис оператора " + sss.Text + " (не хватает аргументов)";
+
                     SqlToken sr = simstack23.Pop();
                     findwhere = true;
                     string kkj;
@@ -482,6 +430,7 @@ namespace University.ARTQ
                 {
                     if (simstack23.Count == 0)
                         return "неверен синтаксис оператора " + sss.Text + " (не хватает аргументов)";
+
                     SqlToken sr = simstack23.Pop();
                     string kkj = sr.Text;
                     if (findwhere)
@@ -505,34 +454,40 @@ namespace University.ARTQ
                 }
             }
 
-            m_BlockTokenList.Clear();
+            SqlTokens.Clear();
             foreach (SqlToken st in simstack23)
-                m_BlockTokenList.Add(st);
+                SqlTokens.Add(st);
 
-            for (int i = 0; i < m_BlockTokenList.Count; i++)
+            for (int i = 0; i < SqlTokens.Count; i++)
             {
-
-                if (m_BlockTokenList[i].Type == SqlTokenType.From)
+                if (SqlTokens[i].Type == SqlTokenType.From)
                 {
-                    m_SQL_Text.Add(m_BlockTokenList[i].Text);
+                    SqlText.Add(SqlTokens[i].Text);
                 }
                 else
                 {
-                    m_SQL_Text.Add(m_BlockTokenList[i].Text);
+                    SqlText.Add(SqlTokens[i].Text);
                 }
             }
 
             return "ok";
         }
-        #endregion
-
-        #region Data structs
-        private struct Query
+        
+        public static int CountWords(string s, string s0)
         {
-            private string SelectText;
-            private string FromText;
-            private string WhereText;
-        };
+            return (s.Length - s.Replace(s0, string.Empty).Length) / s0.Length;
+        }
+        
+        public static string ParseLine(string str)
+        {
+            var result = System.Text.RegularExpressions.Regex.Replace(str, " +", " ");
+
+            result = System.Text.RegularExpressions.Regex.Replace(result, @"\s+", " ");
+            result = System.Text.RegularExpressions.Regex.Replace(result, @"[;:.&^%$#@!?№~|\/]", string.Empty);
+
+            return result.Trim();
+        }
+
         #endregion
     }
 }
