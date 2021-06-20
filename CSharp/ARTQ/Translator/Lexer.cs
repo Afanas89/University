@@ -3,7 +3,7 @@
 namespace University.ARTQ
 {
     /// <summary>
-    /// Класс разбора выражений
+    /// Класс разбора выражений.
     /// </summary>
     public sealed class Lexer 
     {
