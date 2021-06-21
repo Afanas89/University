@@ -6,13 +6,16 @@
     public sealed class SqlToken : Token
     {
         #region Fields and Properties
+
         /// <summary>
         /// Тип токена
         /// </summary>
         public SqlTokenType Type { get; set; }
+
         #endregion
 
         #region Constructors
+
         public SqlToken()
         {
             Type = SqlTokenType.Unknown;
@@ -24,6 +27,7 @@
             Type = type;
             Text = text;
         }
+
         #endregion
     }
 }

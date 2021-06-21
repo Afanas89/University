@@ -6,13 +6,16 @@
     public sealed class RelationalAlgebraToken : Token
     {
         #region Fields and Properties
+
         /// <summary>
         /// Тип токена
         /// </summary>
         public RelationalAlgebraTokenType Type { get; set; }
+
         #endregion
 
         #region Constructors
+
         public RelationalAlgebraToken()
         {
             Type = RelationalAlgebraTokenType.Unknown;
@@ -25,6 +28,7 @@
             Type = type;
             Text = text;
         }
+
         #endregion
     }
 }
